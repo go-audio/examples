@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 
 	"strings"
@@ -94,28 +95,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	buf = &audio.IntBuffer{Format: format, Data: make([]int, 4096)}
-
-	var t int64
+	buf = &audio.IntBuffer{Format: format, Data: make([]int, 100000)}
 	var n int
-	for err == nil && t <= dec.PCMLen() {
+	var doneReading bool
+
+	for err == nil {
 		n, err = dec.PCMBuffer(buf)
-		if err != nil {
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
 			fmt.Println("failed to read the input file -", err)
 			os.Exit(1)
 		}
-		t += int64(n)
-		if n == 0 {
-			break
-		}
 		if n != len(buf.Data) {
 			buf.Data = buf.Data[:n]
+			doneReading = true
 		}
 		if err = enc.Write(buf); err != nil {
 			fmt.Println("failed to write to the output file -", err)
 			os.Exit(1)
 		}
-		if n != len(buf.Data) {
+		if doneReading {
 			break
 		}
 	}
